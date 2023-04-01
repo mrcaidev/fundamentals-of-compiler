@@ -1,5 +1,6 @@
 import { createReadStream, createWriteStream, existsSync, mkdirSync } from "fs";
 import { createInterface } from "readline/promises";
+import { FILE_ENCODING, INPUT_DIRECTORY, OUTPUT_DIRECTORY } from "./constants";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
@@ -9,14 +10,14 @@ export class Lexer {
   private line = 1;
   private cursor: Cursor<string> = new Cursor([]);
 
-  constructor(private readonly sourceCodePath: string) {}
+  constructor(private readonly sourcePath: string) {}
 
   public tokenize() {
-    const { tokenPath, errorPath } = Lexer.getOutputPaths(this.sourceCodePath);
-    const readSourceCodeStream = createReadStream(this.sourceCodePath, "utf-8");
-    const writeTokenStream = createWriteStream(tokenPath, "utf-8");
-    const writeErrorStream = createWriteStream(errorPath, "utf-8");
-    const lineReader = createInterface({ input: readSourceCodeStream });
+    const { tokenPath, errorPath } = Lexer.getOutputPaths(this.sourcePath);
+    const readSourceStream = createReadStream(this.sourcePath, FILE_ENCODING);
+    const writeTokenStream = createWriteStream(tokenPath, FILE_ENCODING);
+    const writeErrorStream = createWriteStream(errorPath, FILE_ENCODING);
+    const lineReader = createInterface({ input: readSourceStream });
 
     lineReader.on("line", (line) => {
       this.cursor = new Cursor(line.trim().split(""));
@@ -189,19 +190,23 @@ export class Lexer {
     throw error;
   }
 
-  private static getOutputPaths(sourceCodePath: string) {
-    if (!sourceCodePath.startsWith("input/")) {
-      throw new Error("Source code should be put under 'input/' directory");
+  private static getOutputPaths(sourcePath: string) {
+    if (!sourcePath.startsWith(INPUT_DIRECTORY + "/")) {
+      throw new Error(`Source code should be put under '${INPUT_DIRECTORY}/'`);
     }
 
-    if (!existsSync("output")) {
-      mkdirSync("output");
+    if (!existsSync(OUTPUT_DIRECTORY)) {
+      mkdirSync(OUTPUT_DIRECTORY);
     }
 
-    const fileName = sourceCodePath.replace("input/", "").split(".").shift();
+    const fileName = sourcePath
+      .replace(INPUT_DIRECTORY + "/", "")
+      .split(".")
+      .shift();
+
     return {
-      tokenPath: `output/${fileName}.dyd`,
-      errorPath: `output/${fileName}.err`,
+      tokenPath: `${OUTPUT_DIRECTORY}/${fileName}.dyd`,
+      errorPath: `${OUTPUT_DIRECTORY}/${fileName}.err`,
     };
   }
 }
