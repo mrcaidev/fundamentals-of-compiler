@@ -13,8 +13,8 @@ export class Lexer {
 
   public tokenize() {
     const readSourceCodeStream = createReadStream(this.sourceCodePath, "utf-8");
-    const writeTokenStream = createWriteStream("dist/source.dyd", "utf-8");
-    const writeErrorStream = createWriteStream("dist/source.err", "utf-8");
+    const writeTokenStream = createWriteStream("output/source.dyd", "utf-8");
+    const writeErrorStream = createWriteStream("output/source.err", "utf-8");
     const lineReader = createInterface({ input: readSourceCodeStream });
 
     lineReader.on("line", (line) => {

@@ -4,12 +4,15 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "build": "esbuild src/index.ts --bundle --outfile=dist/index.cjs --platform=node --packages=external",
+    "start": "node dist/index.cjs"
   },
   "devDependencies": {
     "@types/node": "^18.15.11",
     "@typescript-eslint/eslint-plugin": "^5.57.0",
     "@typescript-eslint/parser": "^5.57.0",
+    "esbuild": "^0.17.14",
     "eslint": "^8.37.0",
     "eslint-config-prettier": "^8.8.0",
     "prettier": "^2.8.7",
