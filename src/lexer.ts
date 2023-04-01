@@ -3,46 +3,44 @@ import { createInterface } from "readline/promises";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
+const MAX_IDENTIFIER_LENGTH = 16;
+
 export class Lexer {
   private line = 1;
   private cursor: Cursor<string> = new Cursor([]);
 
   constructor(private readonly sourceCodePath: string) {}
 
-  public async tokenize() {
-    const readableStream = createReadStream(this.sourceCodePath, "utf-8");
-    const logTokenStream = createWriteStream("dist/source.dyd", "utf-8");
-    const logErrorStream = createWriteStream("dist/source.err", "utf-8");
-    const rl = createInterface({ input: readableStream });
+  public tokenize() {
+    const readSourceCodeStream = createReadStream(this.sourceCodePath, "utf-8");
+    const writeTokenStream = createWriteStream("dist/source.dyd", "utf-8");
+    const writeErrorStream = createWriteStream("dist/source.err", "utf-8");
+    const lineReader = createInterface({ input: readSourceCodeStream });
 
-    rl.on("line", (line) => {
+    lineReader.on("line", (line) => {
       this.cursor = new Cursor(line.trim().split(""));
 
       while (this.cursor.isOpen()) {
         try {
           const token = this.getNextToken();
-          logTokenStream.write(Lexer.formatToken(token));
+          writeTokenStream.write(Lexer.formatToken(token));
         } catch (error) {
-          if (error instanceof Error) {
-            logErrorStream.write(`${error.message}\n`);
-          } else {
-            throw error;
-          }
+          writeErrorStream.write(Lexer.formatError(error));
         }
       }
 
       const endOfLineToken = { type: TokenType.END_OF_LINE, value: "EOLN" };
-      logTokenStream.write(Lexer.formatToken(endOfLineToken));
+      writeTokenStream.write(Lexer.formatToken(endOfLineToken));
 
       this.line++;
     });
 
-    rl.on("close", async () => {
+    lineReader.on("close", () => {
       const endOfFileToken = { type: TokenType.END_OF_FILE, value: "EOF" };
-      logTokenStream.write(Lexer.formatToken(endOfFileToken));
+      writeTokenStream.write(Lexer.formatToken(endOfFileToken));
 
-      logTokenStream.close();
-      logErrorStream.close();
+      writeTokenStream.close();
+      writeErrorStream.close();
     });
   }
 
@@ -67,9 +65,9 @@ export class Lexer {
         return { type: keywordType, value };
       }
 
-      if (value.length > 16) {
+      if (value.length > MAX_IDENTIFIER_LENGTH) {
         throw new Error(
-          `Line ${this.line}: Identifier '${value}' exceeds 16 characters`
+          `Line ${this.line}: Identifier '${value}' exceeds ${MAX_IDENTIFIER_LENGTH} characters`
         );
       }
 
@@ -140,7 +138,7 @@ export class Lexer {
       return { type: TokenType.SEMICOLON, value: ";" };
     }
 
-    throw new Error(`LINE ${this.line}: Invalid character '${initial}'`);
+    throw new Error(`Line ${this.line}: Invalid character '${initial}'`);
   }
 
   private static isLetter(character: string) {
@@ -180,5 +178,13 @@ export class Lexer {
     const value = token.value.padStart(16);
     const type = token.type.toString().padStart(2, "0");
     return `${value} ${type}\n`;
+  }
+
+  private static formatError(error: unknown) {
+    if (error instanceof Error) {
+      return error.message + "\n";
+    }
+
+    throw error;
   }
 }
