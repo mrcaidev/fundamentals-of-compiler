@@ -1,4 +1,4 @@
-import { createReadStream, createWriteStream } from "fs";
+import { createReadStream, createWriteStream, existsSync, mkdirSync } from "fs";
 import { createInterface } from "readline/promises";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
@@ -12,9 +12,10 @@ export class Lexer {
   constructor(private readonly sourceCodePath: string) {}
 
   public tokenize() {
+    const { tokenPath, errorPath } = Lexer.getOutputPaths(this.sourceCodePath);
     const readSourceCodeStream = createReadStream(this.sourceCodePath, "utf-8");
-    const writeTokenStream = createWriteStream("output/source.dyd", "utf-8");
-    const writeErrorStream = createWriteStream("output/source.err", "utf-8");
+    const writeTokenStream = createWriteStream(tokenPath, "utf-8");
+    const writeErrorStream = createWriteStream(errorPath, "utf-8");
     const lineReader = createInterface({ input: readSourceCodeStream });
 
     lineReader.on("line", (line) => {
@@ -186,5 +187,21 @@ export class Lexer {
     }
 
     throw error;
+  }
+
+  private static getOutputPaths(sourceCodePath: string) {
+    if (!sourceCodePath.startsWith("input/")) {
+      throw new Error("Source code should be put under 'input/' directory");
+    }
+
+    if (!existsSync("output")) {
+      mkdirSync("output");
+    }
+
+    const fileName = sourceCodePath.replace("input/", "").split(".").shift();
+    return {
+      tokenPath: `output/${fileName}.dyd`,
+      errorPath: `output/${fileName}.err`,
+    };
   }
 }
