@@ -1,26 +1,32 @@
+import { readFileSync } from "fs";
+import { appendFile } from "fs/promises";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
 export class Lexer {
+  private line = 1;
   private cursor: Cursor<string>;
 
-  constructor(text: string) {
-    this.cursor = new Cursor(text.trim().split(""));
+  constructor(sourceCodePath: string) {
+    const sourceCode = Lexer.readSourceCode(sourceCodePath);
+    this.cursor = new Cursor(sourceCode.trim().split(""));
   }
 
-  public tokenize() {
-    const tokens: Token[] = [];
-
+  public async tokenize() {
     while (this.cursor.isOpen()) {
-      const token = this.getNextToken();
-      tokens.push(token);
+      try {
+        const token = this.getNextToken();
+        await Lexer.logToken(token);
+      } catch (error) {
+        await Lexer.logError(error);
+      }
     }
 
-    return tokens;
+    await Lexer.logToken({ type: TokenType.END_OF_FILE, value: "EOF" });
   }
 
   private getNextToken(): Token {
-    while (this.cursor.isOpen() && [" ", "\n"].includes(this.cursor.current)) {
+    while (this.cursor.current === " ") {
       this.cursor.consume();
     }
 
@@ -37,7 +43,13 @@ export class Lexer {
 
       const keywordType = Lexer.getKeywordType(value);
       if (keywordType) {
-        return { type: keywordType };
+        return { type: keywordType, value };
+      }
+
+      if (value.length > 16) {
+        throw new Error(
+          `Line ${this.line}: Identifier '${value}' exceeds 16 characters`
+        );
       }
 
       return { type: TokenType.IDENTIFIER, value };
@@ -48,74 +60,71 @@ export class Lexer {
       while (Lexer.isDigit(this.cursor.current)) {
         value += this.cursor.consume();
       }
-      return { type: TokenType.CONSTANT, value: +value };
+      return { type: TokenType.CONSTANT, value };
     }
 
     if (initial === "=") {
-      return { type: TokenType.EQUAL };
+      return { type: TokenType.EQUAL, value: "=" };
+    }
+
+    if (initial === "-") {
+      return { type: TokenType.SUBTRACT, value: "-" };
+    }
+
+    if (initial === "*") {
+      return { type: TokenType.MULTIPLY, value: "*" };
+    }
+
+    if (initial === "(") {
+      return { type: TokenType.LEFT_PARENTHESES, value: "(" };
+    }
+
+    if (initial === ")") {
+      return { type: TokenType.RIGHT_PARENTHESES, value: ")" };
     }
 
     if (initial === "<") {
       if (this.cursor.current === "=") {
         this.cursor.consume();
-        return { type: TokenType.LESS_THAN_OR_EQUAL };
+        return { type: TokenType.LESS_THAN_OR_EQUAL, value: "<=" };
       }
 
       if (this.cursor.current === ">") {
         this.cursor.consume();
-        return { type: TokenType.NOT_EQUAL };
+        return { type: TokenType.NOT_EQUAL, value: "<>" };
       }
 
-      return { type: TokenType.LESS_THAN };
+      return { type: TokenType.LESS_THAN, value: "<" };
     }
 
     if (initial === ">") {
       if (this.cursor.current === "=") {
         this.cursor.consume();
-        return { type: TokenType.GREATER_THAN_OR_EQUAL };
+        return { type: TokenType.GREATER_THAN_OR_EQUAL, value: ">=" };
       }
 
-      return { type: TokenType.GREATER_THAN };
-    }
-
-    if (initial === "+") {
-      return { type: TokenType.ADD };
-    }
-
-    if (initial === "-") {
-      return { type: TokenType.SUBTRACT };
-    }
-
-    if (initial === "*") {
-      return { type: TokenType.MULTIPLY };
-    }
-
-    if (initial === "/") {
-      return { type: TokenType.DIVIDE };
+      return { type: TokenType.GREATER_THAN, value: ">" };
     }
 
     if (initial === ":") {
       if (this.cursor.current === "=") {
         this.cursor.consume();
-        return { type: TokenType.ASSIGN };
+        return { type: TokenType.ASSIGN, value: ":=" };
       }
 
-      throw new Error("Invalid character: " + initial);
-    }
-
-    if (initial === "(") {
-      return { type: TokenType.LEFT_PARENTHESES };
-    }
-
-    if (initial === ")") {
-      return { type: TokenType.RIGHT_PARENTHESES };
+      throw new Error(`Line ${this.line}: Misused colon`);
     }
 
     if (initial === ";") {
-      return { type: TokenType.SEMICOLON };
+      return { type: TokenType.SEMICOLON, value: ";" };
     }
 
-    throw new Error("Invalid character: " + initial);
+    if (initial === "\n") {
+      this.line++;
+      return { type: TokenType.END_OF_LINE, value: "EOLN" };
+    }
+
+    throw new Error(`LINE ${this.line}: Invalid character '${initial}'`);
   }
 
   private static isLetter(character: string) {
@@ -149,5 +158,25 @@ export class Lexer {
       default:
         return undefined;
     }
+  }
+
+  private static readSourceCode(filePath: string) {
+    const text = readFileSync(filePath, "utf-8");
+    return text;
+  }
+
+  private static async logToken(token: Token) {
+    const value = token.value.padStart(16);
+    const type = token.type.toString().padStart(2, "0");
+    await appendFile("dist/source.dyd", `${value} ${type}\n`, "utf-8");
+  }
+
+  private static async logError(error: unknown) {
+    if (error instanceof Error) {
+      await appendFile("dist/source.err", `${error.message}\n`, "utf-8");
+      return;
+    }
+
+    throw error;
   }
 }

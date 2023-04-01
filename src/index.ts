@@ -1,7 +1,8 @@
 import { Lexer } from "./lexer";
 
-const lexer = new Lexer(`
-  a := 1 + 2;
-  b := 3 + 4;
-`);
-console.log(lexer.tokenize());
+async function lex() {
+  const lexer = new Lexer("input/source.pas");
+  await lexer.tokenize();
+}
+
+lex();

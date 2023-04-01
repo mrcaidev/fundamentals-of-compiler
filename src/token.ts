@@ -16,25 +16,17 @@ export enum TokenType {
   LESS_THAN,
   GREATER_THAN_OR_EQUAL,
   GREATER_THAN,
-  ADD,
   SUBTRACT,
   MULTIPLY,
-  DIVIDE,
   ASSIGN,
   LEFT_PARENTHESES,
   RIGHT_PARENTHESES,
   SEMICOLON,
+  END_OF_LINE,
+  END_OF_FILE,
 }
 
-export type Token =
-  | {
-      type: TokenType.IDENTIFIER;
-      value: string;
-    }
-  | {
-      type: TokenType.CONSTANT;
-      value: number;
-    }
-  | {
-      type: Exclude<TokenType, TokenType.IDENTIFIER | TokenType.CONSTANT>;
-    };
+export type Token = {
+  type: TokenType;
+  value: string;
+};
