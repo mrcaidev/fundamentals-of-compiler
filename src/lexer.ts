@@ -1,28 +1,49 @@
-import { readFileSync } from "fs";
-import { appendFile } from "fs/promises";
+import { createReadStream, createWriteStream } from "fs";
+import { createInterface } from "readline/promises";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
 export class Lexer {
   private line = 1;
-  private cursor: Cursor<string>;
+  private cursor: Cursor<string> = new Cursor([]);
 
-  constructor(sourceCodePath: string) {
-    const sourceCode = Lexer.readSourceCode(sourceCodePath);
-    this.cursor = new Cursor(sourceCode.trim().split(""));
-  }
+  constructor(private readonly sourceCodePath: string) {}
 
   public async tokenize() {
-    while (this.cursor.isOpen()) {
-      try {
-        const token = this.getNextToken();
-        await Lexer.logToken(token);
-      } catch (error) {
-        await Lexer.logError(error);
-      }
-    }
+    const readableStream = createReadStream(this.sourceCodePath, "utf-8");
+    const logTokenStream = createWriteStream("dist/source.dyd", "utf-8");
+    const logErrorStream = createWriteStream("dist/source.err", "utf-8");
+    const rl = createInterface({ input: readableStream });
 
-    await Lexer.logToken({ type: TokenType.END_OF_FILE, value: "EOF" });
+    rl.on("line", (line) => {
+      this.cursor = new Cursor(line.trim().split(""));
+
+      while (this.cursor.isOpen()) {
+        try {
+          const token = this.getNextToken();
+          logTokenStream.write(Lexer.formatToken(token));
+        } catch (error) {
+          if (error instanceof Error) {
+            logErrorStream.write(`${error.message}\n`);
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      const endOfLineToken = { type: TokenType.END_OF_LINE, value: "EOLN" };
+      logTokenStream.write(Lexer.formatToken(endOfLineToken));
+
+      this.line++;
+    });
+
+    rl.on("close", async () => {
+      const endOfFileToken = { type: TokenType.END_OF_FILE, value: "EOF" };
+      logTokenStream.write(Lexer.formatToken(endOfFileToken));
+
+      logTokenStream.close();
+      logErrorStream.close();
+    });
   }
 
   private getNextToken(): Token {
@@ -119,11 +140,6 @@ export class Lexer {
       return { type: TokenType.SEMICOLON, value: ";" };
     }
 
-    if (initial === "\n") {
-      this.line++;
-      return { type: TokenType.END_OF_LINE, value: "EOLN" };
-    }
-
     throw new Error(`LINE ${this.line}: Invalid character '${initial}'`);
   }
 
@@ -160,23 +176,9 @@ export class Lexer {
     }
   }
 
-  private static readSourceCode(filePath: string) {
-    const text = readFileSync(filePath, "utf-8");
-    return text;
-  }
-
-  private static async logToken(token: Token) {
+  private static formatToken(token: Token) {
     const value = token.value.padStart(16);
     const type = token.type.toString().padStart(2, "0");
-    await appendFile("dist/source.dyd", `${value} ${type}\n`, "utf-8");
-  }
-
-  private static async logError(error: unknown) {
-    if (error instanceof Error) {
-      await appendFile("dist/source.err", `${error.message}\n`, "utf-8");
-      return;
-    }
-
-    throw error;
+    return `${value} ${type}\n`;
   }
 }
