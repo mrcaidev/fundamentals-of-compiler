@@ -1,5 +1,5 @@
 {
-  "name": "compiler-principle",
+  "name": "fundamentals-of-compiler",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,14 +9,14 @@
     "start": "node dist/index.cjs"
   },
   "devDependencies": {
-    "@types/node": "^18.15.11",
-    "@typescript-eslint/eslint-plugin": "^5.57.0",
-    "@typescript-eslint/parser": "^5.57.0",
-    "esbuild": "^0.17.14",
-    "eslint": "^8.37.0",
+    "@types/node": "^18.16.5",
+    "@typescript-eslint/eslint-plugin": "^5.59.2",
+    "@typescript-eslint/parser": "^5.59.2",
+    "esbuild": "^0.17.18",
+    "eslint": "^8.40.0",
     "eslint-config-prettier": "^8.8.0",
-    "prettier": "^2.8.7",
+    "prettier": "^2.8.8",
     "ts-node": "^10.9.1",
-    "typescript": "^5.0.3"
+    "typescript": "^5.0.4"
   }
 }
