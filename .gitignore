@@ -1,7 +1,10 @@
-# dependencies
+# dependency
 node_modules
 .pnp
 .pnp.js
+bower_components
+jspm_packages
+web_modules
 
 # output
 dist
@@ -9,31 +12,40 @@ build
 out
 output
 
-# testing
+# test
 coverage
+*.lcov
+.nyc_output
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
+# cache
+.cache
+.npm
+.eslintcache
+.stylelintcache
+.parcel-cache
+*.tsbuildinfo
 
 # log
 logs
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+.pnpm-debug.log*
 
 # env
 .env*
 
 # framework specific
-.turbo
 .next
-next-env.d.ts
+.nuxt
 .astro
+.turbo
 
 # misc
 temp
+.temp
 *.tgz
-*.tsbuildinfo
 .DS_Store
 *.pem
