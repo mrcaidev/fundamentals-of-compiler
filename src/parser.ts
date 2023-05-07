@@ -1,4 +1,4 @@
-import { createWriteStream, readFileSync } from "fs";
+import { createWriteStream, readFileSync, writeFileSync } from "fs";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
@@ -24,8 +24,12 @@ export class Parser {
   private procedureStack: string[] = ["main"];
   private currentLevel = 1;
   private currentVariableAddress = -1;
+  private shouldSilenceError = false;
+
+  private errors: Error[] = [];
   private variables: Variable[] = [];
   private procedures: Procedure[] = [];
+
   private cursor: Cursor<Token>;
 
   constructor() {
@@ -36,6 +40,7 @@ export class Parser {
     this.parseProgram();
     this.writeVariables();
     this.writeProcedures();
+    Parser.writeErrors(this.errors);
   }
 
   private parseProgram() {
@@ -50,7 +55,7 @@ export class Parser {
   }
 
   private parseDeclarations() {
-    if (this.cursor.current.type === TokenType.INTEGER) {
+    if (this.hasType(TokenType.INTEGER)) {
       this.parseDeclaration();
       this.parseDeclarations();
     }
@@ -63,19 +68,17 @@ export class Parser {
   }
 
   private parseDeclaration_() {
-    if (this.cursor.current.type === TokenType.IDENTIFIER) {
+    this.assertType([TokenType.IDENTIFIER, TokenType.FUNCTION]);
+
+    if (this.hasType(TokenType.IDENTIFIER)) {
       this.parseVariableDeclaration();
       return;
     }
 
-    if (this.cursor.current.type === TokenType.FUNCTION) {
+    if (this.hasType(TokenType.FUNCTION)) {
       this.parseProcedureDeclaration();
       return;
     }
-
-    throw new Error(
-      `Line ${this.line}: Unexpected token ${this.cursor.current.value}`
-    );
   }
 
   private parseVariableDeclaration() {
@@ -96,7 +99,7 @@ export class Parser {
 
     const variable = this.findVariable(name);
     if (!variable) {
-      throw new Error(`Line ${this.line}: Undefined variable ${name}`);
+      this.addError(`Undefined variable '${name}'`);
     }
   }
 
@@ -130,7 +133,7 @@ export class Parser {
 
     const procedure = this.findProcedure(name);
     if (!procedure) {
-      throw new Error(`Line ${this.line}: Undefined procedure ${name}`);
+      this.addError(`Undefined procedure '${name}'`);
     }
   }
 
@@ -165,7 +168,7 @@ export class Parser {
   }
 
   private parseExecutions_() {
-    if (this.cursor.current.type === TokenType.SEMICOLON) {
+    if (this.hasType(TokenType.SEMICOLON)) {
       this.match(TokenType.SEMICOLON);
       this.parseExecution();
       this.parseExecutions_();
@@ -173,29 +176,32 @@ export class Parser {
   }
 
   private parseExecution() {
-    if (this.cursor.current.type === TokenType.READ) {
+    this.assertType([
+      TokenType.READ,
+      TokenType.WRITE,
+      TokenType.IDENTIFIER,
+      TokenType.IF,
+    ]);
+
+    if (this.hasType(TokenType.READ)) {
       this.parseRead();
       return;
     }
 
-    if (this.cursor.current.type === TokenType.WRITE) {
+    if (this.hasType(TokenType.WRITE)) {
       this.parseWrite();
       return;
     }
 
-    if (this.cursor.current.type === TokenType.IDENTIFIER) {
+    if (this.hasType(TokenType.IDENTIFIER)) {
       this.parseAssignment();
       return;
     }
 
-    if (this.cursor.current.type === TokenType.IF) {
+    if (this.hasType(TokenType.IF)) {
       this.parseCondition();
       return;
     }
-
-    throw new Error(
-      `Line ${this.line}: Unexpected token: ${this.cursor.current.value}`
-    );
   }
 
   private parseRead() {
@@ -231,7 +237,7 @@ export class Parser {
       return;
     }
 
-    throw new Error(`Line ${this.line}: Undefined identifier '${name}'`);
+    this.addError(`Undefined identifier '${name}'`);
   }
 
   private parseArithmeticExpression() {
@@ -240,7 +246,7 @@ export class Parser {
   }
 
   private parseArithmeticExpression_() {
-    if (this.cursor.current.type === TokenType.SUBTRACT) {
+    if (this.hasType(TokenType.SUBTRACT)) {
       this.match(TokenType.SUBTRACT);
       this.parseTerm();
       this.parseArithmeticExpression_();
@@ -253,7 +259,7 @@ export class Parser {
   }
 
   private parseTerm_() {
-    if (this.cursor.current.type === TokenType.MULTIPLY) {
+    if (this.hasType(TokenType.MULTIPLY)) {
       this.match(TokenType.MULTIPLY);
       this.parseFactor();
       this.parseTerm_();
@@ -261,12 +267,14 @@ export class Parser {
   }
 
   private parseFactor() {
-    if (this.cursor.current.type === TokenType.CONSTANT) {
+    this.assertType([TokenType.CONSTANT, TokenType.IDENTIFIER]);
+
+    if (this.hasType(TokenType.CONSTANT)) {
       this.match(TokenType.CONSTANT);
       return;
     }
 
-    if (this.cursor.current.type === TokenType.IDENTIFIER) {
+    if (this.hasType(TokenType.IDENTIFIER)) {
       const name = this.cursor.current.value;
 
       const variable = this.findVariable(name);
@@ -281,12 +289,8 @@ export class Parser {
         return;
       }
 
-      throw new Error(`Line ${this.line}: Unknown identifier '${name}'`);
+      this.addError(`Undefined identifier '${name}'`);
     }
-
-    throw new Error(
-      `Line ${this.line}: Unexpected token ${this.cursor.current.value}`
-    );
   }
 
   private parseProcedureCall() {
@@ -322,31 +326,45 @@ export class Parser {
     ]);
   }
 
+  private hasType(expectation: TokenType | TokenType[]) {
+    if (Array.isArray(expectation)) {
+      return expectation.includes(this.cursor.current.type);
+    }
+    return expectation === this.cursor.current.type;
+  }
+
+  private assertType(expectation: TokenType | TokenType[]) {
+    const hasType = this.hasType(expectation);
+
+    if (hasType) {
+      return;
+    }
+
+    this.addError(`Unexpected token '${this.cursor.current.value}'`);
+  }
+
   private match(expectation: TokenType | TokenType[]) {
-    if (!Parser.isMatched(expectation, this.cursor.current.type)) {
-      throw new Error(
-        `Line ${this.line}: Unexpected token '${this.cursor.current.value}'`
-      );
-    }
-
+    this.assertType(expectation);
     const token = this.cursor.consume();
-
-    while (this.cursor.current.type === TokenType.END_OF_LINE) {
-      this.cursor.consume();
-      this.line++;
-    }
-
+    this.goToNextLine();
     return token;
   }
 
-  private static isMatched(
-    expectation: TokenType | TokenType[],
-    type: TokenType
-  ) {
-    if (Array.isArray(expectation)) {
-      return expectation.includes(type);
+  private goToNextLine() {
+    while (this.hasType(TokenType.END_OF_LINE)) {
+      this.cursor.consume();
+      this.line++;
+      this.shouldSilenceError = false;
     }
-    return expectation === type;
+  }
+
+  private addError(message: string) {
+    if (this.shouldSilenceError) {
+      return;
+    }
+
+    this.shouldSilenceError = true;
+    this.errors.push(new Error(`Line ${this.line}: ${message}`));
   }
 
   private findVariable(name: string) {
@@ -408,5 +426,10 @@ export class Parser {
         )} ${type} ${level} ${firstVariableAddress} ${lastVariableAddress}\n`
       );
     }
+  }
+
+  private static writeErrors(errors: Error[]) {
+    const text = errors.map((error) => error.message).join("\n");
+    writeFileSync("output/source.err", text);
   }
 }
