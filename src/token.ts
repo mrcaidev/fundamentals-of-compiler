@@ -30,3 +30,31 @@ export type Token = {
   type: TokenType;
   value: string;
 };
+
+export const tokenTranslation = {
+  [TokenType.BEGIN]: "'begin'",
+  [TokenType.END]: "'end'",
+  [TokenType.INTEGER]: "'integer'",
+  [TokenType.IF]: "'if'",
+  [TokenType.THEN]: "'then'",
+  [TokenType.ELSE]: "'else'",
+  [TokenType.FUNCTION]: "'function'",
+  [TokenType.READ]: "'read'",
+  [TokenType.WRITE]: "'write'",
+  [TokenType.IDENTIFIER]: "identifier",
+  [TokenType.CONSTANT]: "constant",
+  [TokenType.EQUAL]: "'='",
+  [TokenType.NOT_EQUAL]: "'<>'",
+  [TokenType.LESS_THAN_OR_EQUAL]: "'<='",
+  [TokenType.LESS_THAN]: "'<'",
+  [TokenType.GREATER_THAN_OR_EQUAL]: "'>='",
+  [TokenType.GREATER_THAN]: "'>'",
+  [TokenType.SUBTRACT]: "'-'",
+  [TokenType.MULTIPLY]: "'*'",
+  [TokenType.ASSIGN]: "':='",
+  [TokenType.LEFT_PARENTHESES]: "'('",
+  [TokenType.RIGHT_PARENTHESES]: "')'",
+  [TokenType.SEMICOLON]: "';'",
+  [TokenType.END_OF_LINE]: "EOLN",
+  [TokenType.END_OF_FILE]: "EOF",
+};

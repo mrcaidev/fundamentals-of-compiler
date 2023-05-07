@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "fs";
 import { Cursor } from "./cursor";
-import { Token, TokenType } from "./token";
+import { Token, TokenType, tokenTranslation } from "./token";
 
 type Variable = {
   name: string;
@@ -351,7 +351,19 @@ export class Parser {
       return;
     }
 
-    this.addError(`Unexpected token '${this.cursor.current.value}'`);
+    if (Array.isArray(expectation)) {
+      const types = expectation
+        .map((type) => tokenTranslation[type])
+        .join(", ");
+      this.addError(
+        `Expecting one of: ${types}, but got '${this.cursor.current.value}'`
+      );
+      return;
+    }
+
+    this.addError(
+      `Expecting ${tokenTranslation[expectation]}, but got '${this.cursor.current.value}'`
+    );
   }
 
   private match(expectation: TokenType | TokenType[]) {
