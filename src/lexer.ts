@@ -1,4 +1,4 @@
-import { createWriteStream, readFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
@@ -13,28 +13,28 @@ export class Lexer {
   }
 
   public tokenize() {
-    let success = true;
-
-    const writeTokenStream = createWriteStream("output/source.dyd");
-    const writeErrorStream = createWriteStream("output/source.err");
+    const tokens: Token[] = [];
+    const errors: Error[] = [];
 
     while (this.cursor.isOpen()) {
       try {
         const token = this.getNextToken();
-        writeTokenStream.write(Lexer.formatToken(token));
+        tokens.push(token);
       } catch (error) {
-        writeErrorStream.write(Lexer.formatError(error));
-        success = false;
+        if (error instanceof Error) {
+          errors.push(error);
+          continue;
+        }
+        throw error;
       }
     }
 
-    const endOfFileToken = { type: TokenType.END_OF_FILE, value: "EOF" };
-    writeTokenStream.write(Lexer.formatToken(endOfFileToken));
+    tokens.push({ type: TokenType.END_OF_FILE, value: "EOF" });
 
-    writeTokenStream.close();
-    writeErrorStream.close();
+    Lexer.writeTokens(tokens);
+    Lexer.writeErrors(errors);
 
-    return success;
+    return errors.length === 0;
   }
 
   private getNextToken(): Token {
@@ -176,17 +176,19 @@ export class Lexer {
     return readFileSync("input/source.pas").toString().trim().split("");
   }
 
-  private static formatToken(token: Token) {
-    const value = token.value.padStart(16);
-    const type = token.type.toString().padStart(2, "0");
-    return `${value} ${type}\n`;
+  private static writeTokens(tokens: Token[]) {
+    const text = tokens
+      .map((token) => {
+        const value = token.value.padStart(16);
+        const type = token.type.toString().padStart(2, "0");
+        return `${value} ${type}`;
+      })
+      .join("\n");
+    writeFileSync("output/source.dyd", text);
   }
 
-  private static formatError(error: unknown) {
-    if (error instanceof Error) {
-      return `${error.message}\n`;
-    }
-
-    throw error;
+  private static writeErrors(errors: Error[]) {
+    const text = errors.map((error) => error.message).join("\n");
+    writeFileSync("output/source.err", text);
   }
 }

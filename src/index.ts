@@ -9,8 +9,6 @@ async function main() {
     console.warn("Quitting early as lexer has failed.");
   }
 
-  await new Promise((resolve) => setTimeout(resolve, 10));
-
   const parser = new Parser();
   parser.parse();
 }
