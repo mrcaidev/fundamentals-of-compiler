@@ -1,4 +1,4 @@
-import { createWriteStream, readFileSync, writeFileSync } from "fs";
+import { readFileSync, writeFileSync } from "fs";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
@@ -26,20 +26,20 @@ export class Parser {
   private currentVariableAddress = -1;
   private shouldSilenceError = false;
 
-  private errors: Error[] = [];
   private variables: Variable[] = [];
   private procedures: Procedure[] = [];
+  private errors: Error[] = [];
 
   private cursor: Cursor<Token>;
 
   constructor() {
-    this.cursor = new Cursor(Parser.readDyd());
+    this.cursor = new Cursor(Parser.readTokens());
   }
 
   public parse() {
     this.parseProgram();
-    this.writeVariables();
-    this.writeProcedures();
+    Parser.writeVariables(this.variables);
+    Parser.writeProcedures(this.procedures);
     Parser.writeErrors(this.errors);
   }
 
@@ -381,20 +381,16 @@ export class Parser {
     );
   }
 
-  private static readDyd() {
-    const source = readFileSync("output/source.dyd").toString();
+  private static readTokens() {
+    const text = readFileSync("output/source.dyd").toString().trim();
 
     const tokens: Token[] = [];
 
-    for (const line of source.split("\n")) {
-      if (line === "") {
-        continue;
-      }
-
+    for (const line of text.split("\n")) {
       const [value, type] = line.trim().split(" ");
 
       if (!type || !value) {
-        throw new Error(`Invalid DYD format: ${line}`);
+        continue;
       }
 
       tokens.push({ type: +type, value });
@@ -403,29 +399,38 @@ export class Parser {
     return tokens;
   }
 
-  private writeVariables() {
-    const stream = createWriteStream("output/source.var");
-    for (const variant of this.variables) {
-      const { name, procedure, kind, type, level, address } = variant;
-      stream.write(
-        `${name.padStart(16)} ${procedure.padStart(
-          16
-        )} ${kind} ${type} ${level} ${address}\n`
-      );
-    }
+  private static writeVariables(variables: Variable[]) {
+    const text = variables
+      .map((variable) => {
+        const { name, procedure, kind, type, level, address } = variable;
+        return [
+          name.padStart(16),
+          procedure.padStart(16),
+          kind,
+          type,
+          level,
+          address,
+        ].join(" ");
+      })
+      .join("\n");
+    writeFileSync("output/source.var", text);
   }
 
-  private writeProcedures() {
-    const stream = createWriteStream("output/source.pro");
-    for (const procedure of this.procedures) {
-      const { name, type, level, firstVariableAddress, lastVariableAddress } =
-        procedure;
-      stream.write(
-        `${name.padStart(
-          16
-        )} ${type} ${level} ${firstVariableAddress} ${lastVariableAddress}\n`
-      );
-    }
+  private static writeProcedures(procedures: Procedure[]) {
+    const text = procedures
+      .map((procedure) => {
+        const { name, type, level, firstVariableAddress, lastVariableAddress } =
+          procedure;
+        return [
+          name.padStart(16),
+          type,
+          level,
+          firstVariableAddress,
+          lastVariableAddress,
+        ].join(" ");
+      })
+      .join("\n");
+    writeFileSync("output/source.pro", text);
   }
 
   private static writeErrors(errors: Error[]) {

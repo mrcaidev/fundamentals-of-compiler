@@ -9,7 +9,7 @@ export class Lexer {
   private cursor: Cursor<string>;
 
   constructor() {
-    this.cursor = new Cursor(Lexer.readSource());
+    this.cursor = new Cursor(Lexer.readSource().split(""));
   }
 
   public tokenize() {
@@ -173,15 +173,14 @@ export class Lexer {
   }
 
   private static readSource() {
-    return readFileSync("input/source.pas").toString().trim().split("");
+    return readFileSync("input/source.pas").toString().trim();
   }
 
   private static writeTokens(tokens: Token[]) {
     const text = tokens
       .map((token) => {
-        const value = token.value.padStart(16);
-        const type = token.type.toString().padStart(2, "0");
-        return `${value} ${type}`;
+        const { type, value } = token;
+        return [value.padStart(16), type.toString().padStart(2, "0")].join(" ");
       })
       .join("\n");
     writeFileSync("output/source.dyd", text);
