@@ -61,9 +61,14 @@ export class Parser {
   }
 
   private parseDeclarations() {
+    this.parseDeclaration();
+    this.parseDeclarations_();
+  }
+
+  private parseDeclarations_() {
     if (this.hasType(TokenType.INTEGER)) {
       this.parseDeclaration();
-      this.parseDeclarations();
+      this.parseDeclarations_();
     }
   }
 
