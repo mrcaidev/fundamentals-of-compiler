@@ -26,6 +26,7 @@ export class Parser {
   private currentVariableAddress = -1;
   private shouldSilenceError = false;
 
+  private tokens: Token[] = [];
   private variables: Variable[] = [];
   private procedures: Procedure[] = [];
   private errors: Error[] = [];
@@ -33,11 +34,14 @@ export class Parser {
   private cursor: Cursor<Token>;
 
   constructor() {
-    this.cursor = new Cursor(Parser.readTokens());
+    this.tokens = Parser.readTokens();
+    this.cursor = new Cursor(this.tokens);
   }
 
   public parse() {
     this.parseProgram();
+
+    Parser.writeTokens(this.tokens);
     Parser.writeVariables(this.variables);
     Parser.writeProcedures(this.procedures);
     Parser.writeErrors(this.errors);
@@ -399,6 +403,16 @@ export class Parser {
     }
 
     return tokens;
+  }
+
+  private static writeTokens(tokens: Token[]) {
+    const text = tokens
+      .map((token) => {
+        const { type, value } = token;
+        return [value.padStart(16), type.toString().padStart(2, "0")].join(" ");
+      })
+      .join("\n");
+    writeFileSync("output/source.dys", text);
   }
 
   private static writeVariables(variables: Variable[]) {
