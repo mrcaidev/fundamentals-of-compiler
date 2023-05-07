@@ -41,6 +41,8 @@ export class Parser {
     Parser.writeVariables(this.variables);
     Parser.writeProcedures(this.procedures);
     Parser.writeErrors(this.errors);
+
+    return this.errors.length === 0;
   }
 
   private parseProgram() {

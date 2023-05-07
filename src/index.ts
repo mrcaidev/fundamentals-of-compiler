@@ -1,16 +1,26 @@
 import { Lexer } from "./lexer";
 import { Parser } from "./parser";
 
-async function main() {
+function main() {
   const lexer = new Lexer();
-  const success = lexer.tokenize();
+  const lexerSuccess = lexer.tokenize();
 
-  if (!success) {
-    console.warn("Quitting early as lexer has failed.");
+  if (!lexerSuccess) {
+    console.error(
+      "Compilation aborted due to lexer error. A complete log of this run can be found in: source.err"
+    );
+    return;
   }
 
   const parser = new Parser();
-  parser.parse();
+  const parserSuccess = parser.parse();
+
+  if (!parserSuccess) {
+    console.error(
+      "Compilation aborted due to parser error. A complete log of this run can be found in: source.err"
+    );
+    return;
+  }
 }
 
 main();
