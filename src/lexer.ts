@@ -1,6 +1,4 @@
-import { createReadStream, createWriteStream, existsSync, mkdirSync } from "fs";
-import { createInterface } from "readline/promises";
-import { FILE_ENCODING, INPUT_DIRECTORY, OUTPUT_DIRECTORY } from "./constants";
+import { createWriteStream, readFileSync } from "fs";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
@@ -8,42 +6,35 @@ const MAX_IDENTIFIER_LENGTH = 16;
 
 export class Lexer {
   private line = 1;
-  private cursor: Cursor<string> = new Cursor([]);
+  private cursor: Cursor<string>;
 
-  constructor(private readonly sourcePath: string) {}
+  constructor() {
+    this.cursor = new Cursor(Lexer.readSource());
+  }
 
   public tokenize() {
-    const { tokenPath, errorPath } = Lexer.getOutputPaths(this.sourcePath);
-    const readSourceStream = createReadStream(this.sourcePath, FILE_ENCODING);
-    const writeTokenStream = createWriteStream(tokenPath, FILE_ENCODING);
-    const writeErrorStream = createWriteStream(errorPath, FILE_ENCODING);
-    const lineReader = createInterface({ input: readSourceStream });
+    let success = true;
 
-    lineReader.on("line", (line) => {
-      this.cursor = new Cursor(line.trim().split(""));
+    const writeTokenStream = createWriteStream("output/source.dyd");
+    const writeErrorStream = createWriteStream("output/source.err");
 
-      while (this.cursor.isOpen()) {
-        try {
-          const token = this.getNextToken();
-          writeTokenStream.write(Lexer.formatToken(token));
-        } catch (error) {
-          writeErrorStream.write(Lexer.formatError(error));
-        }
+    while (this.cursor.isOpen()) {
+      try {
+        const token = this.getNextToken();
+        writeTokenStream.write(Lexer.formatToken(token));
+      } catch (error) {
+        writeErrorStream.write(Lexer.formatError(error));
+        success = false;
       }
+    }
 
-      const endOfLineToken = { type: TokenType.END_OF_LINE, value: "EOLN" };
-      writeTokenStream.write(Lexer.formatToken(endOfLineToken));
+    const endOfFileToken = { type: TokenType.END_OF_FILE, value: "EOF" };
+    writeTokenStream.write(Lexer.formatToken(endOfFileToken));
 
-      this.line++;
-    });
+    writeTokenStream.close();
+    writeErrorStream.close();
 
-    lineReader.on("close", () => {
-      const endOfFileToken = { type: TokenType.END_OF_FILE, value: "EOF" };
-      writeTokenStream.write(Lexer.formatToken(endOfFileToken));
-
-      writeTokenStream.close();
-      writeErrorStream.close();
-    });
+    return success;
   }
 
   private getNextToken(): Token {
@@ -63,17 +54,17 @@ export class Lexer {
       }
 
       const keywordType = Lexer.getKeywordType(value);
-      if (keywordType) {
+      if (keywordType !== undefined) {
         return { type: keywordType, value };
       }
 
-      if (value.length > MAX_IDENTIFIER_LENGTH) {
-        throw new Error(
-          `Line ${this.line}: Identifier '${value}' exceeds ${MAX_IDENTIFIER_LENGTH} characters`
-        );
+      if (value.length <= MAX_IDENTIFIER_LENGTH) {
+        return { type: TokenType.IDENTIFIER, value };
       }
 
-      return { type: TokenType.IDENTIFIER, value };
+      throw new Error(
+        `Line ${this.line}: Identifier name '${value}' exceeds ${MAX_IDENTIFIER_LENGTH} characters`
+      );
     }
 
     if (Lexer.isDigit(initial)) {
@@ -140,19 +131,24 @@ export class Lexer {
       return { type: TokenType.SEMICOLON, value: ";" };
     }
 
+    if (initial === "\n") {
+      this.line++;
+      return { type: TokenType.END_OF_LINE, value: "EOLN" };
+    }
+
     throw new Error(`Line ${this.line}: Invalid character '${initial}'`);
   }
 
-  private static isLetter(character: string) {
-    return /^[a-z]$/i.test(character);
+  private static isLetter(value: string) {
+    return /^[a-z]$/i.test(value);
   }
 
-  private static isDigit(character: string) {
-    return /^\d$/.test(character);
+  private static isDigit(value: string) {
+    return /^\d$/.test(value);
   }
 
-  private static getKeywordType(text: string) {
-    switch (text.toLowerCase()) {
+  private static getKeywordType(value: string) {
+    switch (value.toLowerCase()) {
       case "begin":
         return TokenType.BEGIN;
       case "end":
@@ -176,6 +172,10 @@ export class Lexer {
     }
   }
 
+  private static readSource() {
+    return readFileSync("input/source.pas").toString().trim().split("");
+  }
+
   private static formatToken(token: Token) {
     const value = token.value.padStart(16);
     const type = token.type.toString().padStart(2, "0");
@@ -184,29 +184,9 @@ export class Lexer {
 
   private static formatError(error: unknown) {
     if (error instanceof Error) {
-      return error.message + "\n";
+      return `${error.message}\n`;
     }
 
     throw error;
-  }
-
-  private static getOutputPaths(sourcePath: string) {
-    if (!sourcePath.startsWith(INPUT_DIRECTORY + "/")) {
-      throw new Error(`Source code should be put under '${INPUT_DIRECTORY}/'`);
-    }
-
-    if (!existsSync(OUTPUT_DIRECTORY)) {
-      mkdirSync(OUTPUT_DIRECTORY);
-    }
-
-    const fileName = sourcePath
-      .replace(INPUT_DIRECTORY + "/", "")
-      .split(".")
-      .shift();
-
-    return {
-      tokenPath: `${OUTPUT_DIRECTORY}/${fileName}.dyd`,
-      errorPath: `${OUTPUT_DIRECTORY}/${fileName}.err`,
-    };
   }
 }

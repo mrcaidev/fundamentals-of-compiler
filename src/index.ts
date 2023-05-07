@@ -1,4 +1,6 @@
 import { Lexer } from "./lexer";
 
-const lexer = new Lexer("input/source.pas");
-lexer.tokenize();
+const lexer = new Lexer();
+const success = lexer.tokenize();
+
+console.log(success);
