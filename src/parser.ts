@@ -34,8 +34,7 @@ export class Parser {
   private cursor: Cursor<Token>;
 
   constructor() {
-    this.tokens = Parser.readTokens();
-    this.cursor = new Cursor(this.tokens);
+    this.cursor = new Cursor(Parser.readTokens());
   }
 
   public parse() {
@@ -57,6 +56,7 @@ export class Parser {
 
   private parseProgram() {
     this.parseSubprogram();
+    this.match(TokenType.END_OF_FILE);
   }
 
   private parseSubprogram() {
@@ -431,6 +431,7 @@ export class Parser {
   private consumeToken() {
     this.goToNextLine();
     const token = this.cursor.consume();
+    this.tokens.push(token);
     this.goToNextLine();
     return token;
   }
@@ -449,8 +450,9 @@ export class Parser {
   }
 
   private goToNextLine() {
-    while (this.hasType(TokenType.END_OF_LINE)) {
-      this.cursor.consume();
+    while (this.cursor.isOpen() && this.hasType(TokenType.END_OF_LINE)) {
+      const token = this.cursor.consume();
+      this.tokens.push(token);
       this.line++;
       this.shouldAddError = true;
     }
