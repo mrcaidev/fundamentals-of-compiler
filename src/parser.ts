@@ -79,8 +79,6 @@ export class Parser {
   }
 
   private parseDeclaration_() {
-    this.assertType([TokenType.IDENTIFIER, TokenType.FUNCTION]);
-
     if (this.hasType(TokenType.IDENTIFIER)) {
       this.parseVariableDeclaration();
       return;
@@ -90,10 +88,17 @@ export class Parser {
       this.parseProcedureDeclaration();
       return;
     }
+
+    this.addError(
+      `'${this.cursor.current.value}' is not a valid variable name`
+    );
   }
 
   private parseVariableDeclaration() {
-    const name = this.match(TokenType.IDENTIFIER).value;
+    const name = this.match(
+      TokenType.IDENTIFIER,
+      `${this.cursor.current.value} is not a valid variable name`
+    ).value;
 
     const existingVariable = this.variables.find(
       (variable) =>
@@ -117,7 +122,10 @@ export class Parser {
   }
 
   private parseVariable() {
-    const name = this.match(TokenType.IDENTIFIER).value;
+    const name = this.match(
+      TokenType.IDENTIFIER,
+      `'${this.cursor.current.value}' is not a valid variable name`
+    ).value;
 
     const variable = this.findVariable(name);
     if (!variable) {
@@ -128,7 +136,10 @@ export class Parser {
   private parseProcedureDeclaration() {
     this.match(TokenType.FUNCTION);
 
-    const name = this.match(TokenType.IDENTIFIER).value;
+    const name = this.match(
+      TokenType.IDENTIFIER,
+      `'${this.cursor.current.value}' is not a valid procedure name`
+    ).value;
 
     const existingProcedure = this.procedures.find(
       (procedure) =>
@@ -159,7 +170,10 @@ export class Parser {
   }
 
   private parseProcedure() {
-    const name = this.match(TokenType.IDENTIFIER).value;
+    const name = this.match(
+      TokenType.IDENTIFIER,
+      `'${this.cursor.current.value}' is not a valid procedure name`
+    ).value;
 
     const procedure = this.findProcedure(name);
     if (!procedure) {
@@ -168,7 +182,10 @@ export class Parser {
   }
 
   private parseParameterDeclaration() {
-    const name = this.match(TokenType.IDENTIFIER).value;
+    const name = this.match(
+      TokenType.IDENTIFIER,
+      `'${this.cursor.current.value}' is not a valid parameter name`
+    ).value;
 
     const existingParameter = this.variables.find(
       (variable) =>
@@ -217,13 +234,6 @@ export class Parser {
   }
 
   private parseExecution() {
-    this.assertType([
-      TokenType.READ,
-      TokenType.WRITE,
-      TokenType.IDENTIFIER,
-      TokenType.IF,
-    ]);
-
     if (this.hasType(TokenType.READ)) {
       this.parseRead();
       return;
@@ -243,6 +253,10 @@ export class Parser {
       this.parseCondition();
       return;
     }
+
+    this.addError(
+      "Expecting executions. Please move all declarations to the beginning of the procedure"
+    );
   }
 
   private parseRead() {
@@ -278,7 +292,7 @@ export class Parser {
       return;
     }
 
-    this.addError(`Undefined identifier '${name}'`);
+    this.addError(`Undefined variable or procedure '${name}'`);
   }
 
   private parseArithmeticExpression() {
@@ -308,8 +322,6 @@ export class Parser {
   }
 
   private parseFactor() {
-    this.assertType([TokenType.CONSTANT, TokenType.IDENTIFIER]);
-
     if (this.hasType(TokenType.CONSTANT)) {
       this.match(TokenType.CONSTANT);
       return;
@@ -330,8 +342,12 @@ export class Parser {
         return;
       }
 
-      this.addError(`Undefined identifier '${name}'`);
+      this.addError(`Undefined variable or procedure '${name}'`);
     }
+
+    this.addError(
+      "Arithmetic expression should only contain variables, constants and operators"
+    );
   }
 
   private parseProcedureCall() {
@@ -357,58 +373,57 @@ export class Parser {
   }
 
   private parseOperator() {
-    this.match([
-      TokenType.EQUAL,
-      TokenType.NOT_EQUAL,
-      TokenType.LESS_THAN,
-      TokenType.LESS_THAN_OR_EQUAL,
-      TokenType.GREATER_THAN,
-      TokenType.GREATER_THAN_OR_EQUAL,
-    ]);
+    if (this.hasType(TokenType.EQUAL)) {
+      this.match(TokenType.EQUAL);
+      return;
+    }
+
+    if (this.hasType(TokenType.NOT_EQUAL)) {
+      this.match(TokenType.NOT_EQUAL);
+      return;
+    }
+
+    if (this.hasType(TokenType.LESS_THAN)) {
+      this.match(TokenType.LESS_THAN);
+      return;
+    }
+
+    if (this.hasType(TokenType.LESS_THAN_OR_EQUAL)) {
+      this.match(TokenType.LESS_THAN_OR_EQUAL);
+      return;
+    }
+
+    if (this.hasType(TokenType.GREATER_THAN)) {
+      this.match(TokenType.GREATER_THAN);
+      return;
+    }
+
+    if (this.hasType(TokenType.GREATER_THAN_OR_EQUAL)) {
+      this.match(TokenType.GREATER_THAN_OR_EQUAL);
+      return;
+    }
+
+    this.addError(`${this.cursor.current.value} is not a valid operator`);
   }
 
-  private hasType(expectation: TokenType | TokenType[]) {
+  private hasType(expectation: TokenType) {
     if (Array.isArray(expectation)) {
       return expectation.includes(this.cursor.current.type);
     }
     return expectation === this.cursor.current.type;
   }
 
-  private assertType(expectation: TokenType | TokenType[]) {
-    const hasType = this.hasType(expectation);
-
-    if (hasType) {
-      return;
-    }
-
-    if (Array.isArray(expectation)) {
-      const types = expectation
-        .map((type) => tokenTranslation[type])
-        .join(", ");
+  private match(expectation: TokenType, message?: string) {
+    if (!this.hasType(expectation)) {
       this.addError(
-        `Expecting one of: ${types}, but got '${this.cursor.current.value}'`
+        message ??
+          `Expecting ${tokenTranslation[expectation]} but got '${this.cursor.current.value}'`
       );
-      return;
     }
 
-    this.addError(
-      `Expecting ${tokenTranslation[expectation]}, but got '${this.cursor.current.value}'`
-    );
-  }
-
-  private match(expectation: TokenType | TokenType[]) {
-    this.assertType(expectation);
     const token = this.cursor.consume();
     this.goToNextLine();
     return token;
-  }
-
-  private goToNextLine() {
-    while (this.hasType(TokenType.END_OF_LINE)) {
-      this.cursor.consume();
-      this.line++;
-      this.shouldSilenceError = false;
-    }
   }
 
   private addError(message: string) {
@@ -418,6 +433,14 @@ export class Parser {
 
     this.shouldSilenceError = true;
     this.errors.push(new Error(`Line ${this.line}: ${message}`));
+  }
+
+  private goToNextLine() {
+    while (this.hasType(TokenType.END_OF_LINE)) {
+      this.cursor.consume();
+      this.line++;
+      this.shouldSilenceError = false;
+    }
   }
 
   private findVariable(name: string) {
