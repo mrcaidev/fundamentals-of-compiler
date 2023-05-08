@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from "fs";
 import { Cursor } from "./cursor";
-import { Token, TokenType, tokenTranslation } from "./token";
+import { Token, TokenType } from "./token";
 
 type Variable = {
   name: string;
@@ -421,7 +421,9 @@ export class Parser {
     if (!this.hasType(expectation)) {
       this.addError(
         message ??
-          `Expect ${tokenTranslation[expectation]}, but got '${this.cursor.current.value}'`
+          `Expect ${Parser.translateToken(expectation)}, but got '${
+            this.cursor.current.value
+          }'`
       );
     }
 
@@ -470,6 +472,37 @@ export class Parser {
       (procedure) =>
         procedure.name === name && procedure.level - 1 <= this.currentLevel
     );
+  }
+
+  private static translateToken(type: TokenType) {
+    const tokenTranslation = {
+      [TokenType.BEGIN]: "'begin'",
+      [TokenType.END]: "'end'",
+      [TokenType.INTEGER]: "'integer'",
+      [TokenType.IF]: "'if'",
+      [TokenType.THEN]: "'then'",
+      [TokenType.ELSE]: "'else'",
+      [TokenType.FUNCTION]: "'function'",
+      [TokenType.READ]: "'read'",
+      [TokenType.WRITE]: "'write'",
+      [TokenType.IDENTIFIER]: "identifier",
+      [TokenType.CONSTANT]: "constant",
+      [TokenType.EQUAL]: "'='",
+      [TokenType.NOT_EQUAL]: "'<>'",
+      [TokenType.LESS_THAN_OR_EQUAL]: "'<='",
+      [TokenType.LESS_THAN]: "'<'",
+      [TokenType.GREATER_THAN_OR_EQUAL]: "'>='",
+      [TokenType.GREATER_THAN]: "'>'",
+      [TokenType.SUBTRACT]: "'-'",
+      [TokenType.MULTIPLY]: "'*'",
+      [TokenType.ASSIGN]: "':='",
+      [TokenType.LEFT_PARENTHESES]: "'('",
+      [TokenType.RIGHT_PARENTHESES]: "')'",
+      [TokenType.SEMICOLON]: "';'",
+      [TokenType.END_OF_LINE]: "EOLN",
+      [TokenType.END_OF_FILE]: "EOF",
+    };
+    return tokenTranslation[type];
   }
 
   private static readTokens() {
