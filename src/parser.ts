@@ -95,6 +95,17 @@ export class Parser {
   private parseVariableDeclaration() {
     const name = this.match(TokenType.IDENTIFIER).value;
 
+    const existingVariable = this.variables.find(
+      (variable) =>
+        variable.name === name &&
+        variable.kind === 0 &&
+        variable.procedure === this.procedureStack[0]
+    );
+    if (existingVariable) {
+      this.addError(`Variable '${name}' has already been declared`);
+      return;
+    }
+
     this.variables.push({
       name,
       procedure: this.procedureStack[0] ?? "",
@@ -118,6 +129,14 @@ export class Parser {
     this.match(TokenType.FUNCTION);
 
     const name = this.match(TokenType.IDENTIFIER).value;
+
+    const existingProcedure = this.procedures.find(
+      (procedure) =>
+        procedure.name === name && procedure.level === this.currentLevel + 1
+    );
+    if (existingProcedure) {
+      this.addError(`Procedure '${name}' has already been declared`);
+    }
 
     const procedure = {
       name,
@@ -150,6 +169,17 @@ export class Parser {
 
   private parseParameterDeclaration() {
     const name = this.match(TokenType.IDENTIFIER).value;
+
+    const existingParameter = this.variables.find(
+      (variable) =>
+        variable.name === name &&
+        variable.kind === 1 &&
+        variable.procedure === this.procedureStack[0]
+    );
+    if (existingParameter) {
+      this.addError(`Parameter '${name}' has already been declared`);
+      return;
+    }
 
     this.variables.push({
       name,
