@@ -39,14 +39,20 @@ export class Parser {
   }
 
   public parse() {
-    this.parseProgram();
-
-    Parser.writeTokens(this.tokens);
-    Parser.writeVariables(this.variables);
-    Parser.writeProcedures(this.procedures);
-    Parser.writeErrors(this.errors);
-
-    return this.errors.length === 0;
+    try {
+      this.parseProgram();
+      return this.errors.length === 0;
+    } catch (error) {
+      if (error instanceof Error) {
+        this.errors.push(error.message + " [FATAL]");
+      }
+      return false;
+    } finally {
+      Parser.writeTokens(this.tokens);
+      Parser.writeVariables(this.variables);
+      Parser.writeProcedures(this.procedures);
+      Parser.writeErrors(this.errors);
+    }
   }
 
   private parseProgram() {
@@ -89,30 +95,30 @@ export class Parser {
       return;
     }
 
-    this.addError(
+    this.throwError(
       `'${this.cursor.current.value}' is not a valid variable name`
     );
   }
 
   private parseVariableDeclaration() {
-    const name = this.match(
+    const { value } = this.match(
       TokenType.IDENTIFIER,
       `${this.cursor.current.value} is not a valid variable name`
-    ).value;
+    );
 
     const existingVariable = this.variables.find(
       (variable) =>
-        variable.name === name &&
+        variable.name === value &&
         variable.kind === 0 &&
         variable.procedure === this.procedureStack[0]
     );
     if (existingVariable) {
-      this.addError(`Variable '${name}' has already been declared`);
+      this.addError(`Variable '${value}' has already been declared`);
       return;
     }
 
     this.variables.push({
-      name,
+      name: value,
       procedure: this.procedureStack[0] ?? "",
       kind: 0,
       type: "integer",
@@ -122,42 +128,42 @@ export class Parser {
   }
 
   private parseVariable() {
-    const name = this.match(
+    const { value } = this.match(
       TokenType.IDENTIFIER,
       `'${this.cursor.current.value}' is not a valid variable name`
-    ).value;
+    );
 
-    const variable = this.findVariable(name);
+    const variable = this.findVariable(value);
     if (!variable) {
-      this.addError(`Undefined variable '${name}'`);
+      this.addError(`Undefined variable '${value}'`);
     }
   }
 
   private parseProcedureDeclaration() {
     this.match(TokenType.FUNCTION);
 
-    const name = this.match(
+    const { value } = this.match(
       TokenType.IDENTIFIER,
       `'${this.cursor.current.value}' is not a valid procedure name`
-    ).value;
+    );
 
     const existingProcedure = this.procedures.find(
       (procedure) =>
-        procedure.name === name && procedure.level === this.currentLevel + 1
+        procedure.name === value && procedure.level === this.currentLevel + 1
     );
     if (existingProcedure) {
-      this.addError(`Procedure '${name}' has already been declared`);
+      this.addError(`Procedure '${value}' has already been declared`);
     }
 
     const procedure = {
-      name,
+      name: value,
       type: "integer",
       level: this.currentLevel + 1,
       firstVariableAddress: 0,
       lastVariableAddress: 0,
     };
     this.procedures.push(procedure);
-    this.procedureStack.unshift(name);
+    this.procedureStack.unshift(value);
 
     this.match(TokenType.LEFT_PARENTHESES);
     this.parseParameterDeclaration();
@@ -170,36 +176,36 @@ export class Parser {
   }
 
   private parseProcedure() {
-    const name = this.match(
+    const { value } = this.match(
       TokenType.IDENTIFIER,
       `'${this.cursor.current.value}' is not a valid procedure name`
-    ).value;
+    );
 
-    const procedure = this.findProcedure(name);
+    const procedure = this.findProcedure(value);
     if (!procedure) {
-      this.addError(`Undefined procedure '${name}'`);
+      this.addError(`Undefined procedure '${value}'`);
     }
   }
 
   private parseParameterDeclaration() {
-    const name = this.match(
+    const { value } = this.match(
       TokenType.IDENTIFIER,
       `'${this.cursor.current.value}' is not a valid parameter name`
-    ).value;
+    );
 
     const existingParameter = this.variables.find(
       (variable) =>
-        variable.name === name &&
+        variable.name === value &&
         variable.kind === 1 &&
         variable.procedure === this.procedureStack[0]
     );
     if (existingParameter) {
-      this.addError(`Parameter '${name}' has already been declared`);
+      this.addError(`Parameter '${value}' has already been declared`);
       return;
     }
 
     this.variables.push({
-      name,
+      name: value,
       procedure: this.procedureStack[0] ?? "",
       kind: 1,
       type: "integer",
@@ -254,8 +260,8 @@ export class Parser {
       return;
     }
 
-    this.addError(
-      "Expecting executions. Please move all declarations to the beginning of the procedure"
+    this.throwError(
+      `Expect executions, but got '${this.cursor.current.value}'. Please move all declarations to the beginning of the procedure`
     );
   }
 
@@ -274,9 +280,7 @@ export class Parser {
   }
 
   private parseAssignment() {
-    const name = this.cursor.current.value;
-
-    const variable = this.findVariable(name);
+    const variable = this.findVariable(this.cursor.current.value);
     if (variable) {
       this.parseVariable();
       this.match(TokenType.ASSIGN);
@@ -284,7 +288,7 @@ export class Parser {
       return;
     }
 
-    const procedure = this.findProcedure(name);
+    const procedure = this.findProcedure(this.cursor.current.value);
     if (procedure) {
       this.parseProcedure();
       this.match(TokenType.ASSIGN);
@@ -292,7 +296,9 @@ export class Parser {
       return;
     }
 
-    this.addError(`Undefined variable or procedure '${name}'`);
+    this.throwError(
+      `Undefined variable or procedure '${this.cursor.current.value}'`
+    );
   }
 
   private parseArithmeticExpression() {
@@ -328,25 +334,25 @@ export class Parser {
     }
 
     if (this.hasType(TokenType.IDENTIFIER)) {
-      const name = this.cursor.current.value;
-
-      const variable = this.findVariable(name);
+      const variable = this.findVariable(this.cursor.current.value);
       if (variable) {
         this.parseVariable();
         return;
       }
 
-      const procedure = this.findProcedure(name);
+      const procedure = this.findProcedure(this.cursor.current.value);
       if (procedure) {
         this.parseProcedureCall();
         return;
       }
 
-      this.addError(`Undefined variable or procedure '${name}'`);
+      this.throwError(
+        `Undefined variable or procedure '${this.cursor.current.value}'`
+      );
     }
 
-    this.addError(
-      "Arithmetic expression should only contain variables, constants and operators"
+    this.throwError(
+      `Expect variable or constant, but got '${this.cursor.current.value}'`
     );
   }
 
@@ -403,13 +409,11 @@ export class Parser {
       return;
     }
 
-    this.addError(`${this.cursor.current.value} is not a valid operator`);
+    const { value } = this.consumeToken();
+    this.addError(`${value} is not a valid operator`);
   }
 
   private hasType(expectation: TokenType) {
-    if (Array.isArray(expectation)) {
-      return expectation.includes(this.cursor.current.type);
-    }
     return expectation === this.cursor.current.type;
   }
 
@@ -417,13 +421,22 @@ export class Parser {
     if (!this.hasType(expectation)) {
       this.addError(
         message ??
-          `Expecting ${tokenTranslation[expectation]} but got '${this.cursor.current.value}'`
+          `Expect ${tokenTranslation[expectation]}, but got '${this.cursor.current.value}'`
       );
     }
 
+    return this.consumeToken();
+  }
+
+  private consumeToken() {
+    this.goToNextLine();
     const token = this.cursor.consume();
     this.goToNextLine();
     return token;
+  }
+
+  private throwError(error: string) {
+    throw new Error(`Line ${this.line}: ${error}`);
   }
 
   private addError(error: string) {
