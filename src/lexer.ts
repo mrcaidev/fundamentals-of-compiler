@@ -14,7 +14,7 @@ export class Lexer {
 
   public tokenize() {
     const tokens: Token[] = [];
-    const errors: Error[] = [];
+    const errors: string[] = [];
 
     while (this.cursor.isOpen()) {
       try {
@@ -22,7 +22,7 @@ export class Lexer {
         tokens.push(token);
       } catch (error) {
         if (error instanceof Error) {
-          errors.push(error);
+          errors.push(error.message);
           continue;
         }
         throw error;
@@ -186,8 +186,8 @@ export class Lexer {
     writeFileSync("output/source.dyd", text);
   }
 
-  private static writeErrors(errors: Error[]) {
-    const text = errors.map((error) => error.message).join("\n");
+  private static writeErrors(errors: string[]) {
+    const text = errors.join("\n");
     writeFileSync("output/source.err", text);
   }
 }
