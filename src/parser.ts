@@ -29,7 +29,7 @@ export class Parser {
   private tokens: Token[] = [];
   private variables: Variable[] = [];
   private procedures: Procedure[] = [];
-  private errors: Error[] = [];
+  private errors: string[] = [];
 
   private cursor: Cursor<Token>;
 
@@ -426,13 +426,13 @@ export class Parser {
     return token;
   }
 
-  private addError(message: string) {
+  private addError(error: string) {
     if (!this.shouldAddError) {
       return;
     }
 
     this.shouldAddError = false;
-    this.errors.push(new Error(`Line ${this.line}: ${message}`));
+    this.errors.push(`Line ${this.line}: ${error}`);
   }
 
   private goToNextLine() {
@@ -519,8 +519,8 @@ export class Parser {
     writeFileSync("output/source.pro", text);
   }
 
-  private static writeErrors(errors: Error[]) {
-    const text = errors.map((error) => error.message).join("\n");
+  private static writeErrors(errors: string[]) {
+    const text = errors.join("\n");
     writeFileSync("output/source.err", text);
   }
 }
