@@ -24,7 +24,7 @@ export class Parser {
   private procedureStack: string[] = ["main"];
   private currentLevel = 1;
   private currentVariableAddress = -1;
-  private shouldSilenceError = false;
+  private shouldAddError = true;
 
   private tokens: Token[] = [];
   private variables: Variable[] = [];
@@ -427,11 +427,11 @@ export class Parser {
   }
 
   private addError(message: string) {
-    if (this.shouldSilenceError) {
+    if (!this.shouldAddError) {
       return;
     }
 
-    this.shouldSilenceError = true;
+    this.shouldAddError = false;
     this.errors.push(new Error(`Line ${this.line}: ${message}`));
   }
 
@@ -439,7 +439,7 @@ export class Parser {
     while (this.hasType(TokenType.END_OF_LINE)) {
       this.cursor.consume();
       this.line++;
-      this.shouldSilenceError = false;
+      this.shouldAddError = true;
     }
   }
 
