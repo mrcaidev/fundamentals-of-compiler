@@ -355,6 +355,18 @@ export class Parser {
       level: this.currentLevel,
       address: ++this.currentVariableAddress,
     });
+
+    const procedure = this.findProcedure(this.procedureStack[0] ?? "");
+
+    if (!procedure) {
+      return;
+    }
+
+    if (procedure.firstVariableAddress === -1) {
+      procedure.firstVariableAddress = this.currentVariableAddress;
+    }
+
+    procedure.lastVariableAddress = this.currentVariableAddress;
   }
 
   private findDuplicateVariable(name: string) {
@@ -414,8 +426,8 @@ export class Parser {
       name,
       type: "integer",
       level: this.currentLevel + 1,
-      firstVariableAddress: 0,
-      lastVariableAddress: 0,
+      firstVariableAddress: -1,
+      lastVariableAddress: -1,
     });
 
     this.procedureStack.unshift(name);
