@@ -120,10 +120,7 @@ export class Parser {
     this.parseParameterDeclaration();
     this.match(TokenType.RIGHT_PARENTHESES);
     this.match(TokenType.SEMICOLON);
-
-    // procedure.firstVariableAddress = this.currentVariableAddress + 1;
     this.parseProcedureBody();
-    // procedure.lastVariableAddress = this.currentVariableAddress;
   }
 
   private parseProcedureNameDeclaration() {
