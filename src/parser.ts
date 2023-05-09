@@ -209,21 +209,15 @@ export class Parser {
   private parseAssignment() {
     if (this.hasVariable()) {
       this.parseVariable();
-      this.match(TokenType.ASSIGN);
-      this.parseArithmeticExpression();
-      return;
-    }
-
-    if (this.hasProcedure()) {
+    } else if (this.hasProcedure()) {
       this.parseProcedureName();
-      this.match(TokenType.ASSIGN);
-      this.parseArithmeticExpression();
-      return;
+    } else {
+      const { value } = this.consumeToken();
+      this.addError(`Undefined variable or procedure '${value}'`);
     }
 
-    this.throwError(
-      `Undefined variable or procedure '${this.cursor.current.value}'`
-    );
+    this.match(TokenType.ASSIGN);
+    this.parseArithmeticExpression();
   }
 
   private parseArithmeticExpression() {
