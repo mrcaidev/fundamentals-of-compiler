@@ -118,7 +118,7 @@ export class Parser {
     this.parseProcedureNameDeclaration();
     this.match(TokenType.LEFT_PARENTHESES);
     this.parseParameterDeclaration();
-    this.match(TokenType.RIGHT_PARENTHESES);
+    this.match(TokenType.RIGHT_PARENTHESES, "Unmatched '('");
     this.match(TokenType.SEMICOLON);
     this.parseProcedureBody();
   }
@@ -196,14 +196,14 @@ export class Parser {
     this.match(TokenType.READ);
     this.match(TokenType.LEFT_PARENTHESES);
     this.parseVariable();
-    this.match(TokenType.RIGHT_PARENTHESES);
+    this.match(TokenType.RIGHT_PARENTHESES, "Unmatched '('");
   }
 
   private parseWrite() {
     this.match(TokenType.WRITE);
     this.match(TokenType.LEFT_PARENTHESES);
     this.parseVariable();
-    this.match(TokenType.RIGHT_PARENTHESES);
+    this.match(TokenType.RIGHT_PARENTHESES, "Unmatched '('");
   }
 
   private parseAssignment() {
@@ -283,7 +283,7 @@ export class Parser {
     this.parseProcedureName();
     this.match(TokenType.LEFT_PARENTHESES);
     this.parseArithmeticExpression();
-    this.match(TokenType.RIGHT_PARENTHESES);
+    this.match(TokenType.RIGHT_PARENTHESES, "Unmatched '('");
   }
 
   private parseCondition() {
