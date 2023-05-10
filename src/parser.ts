@@ -22,8 +22,7 @@ type Procedure = {
 
 export class Parser {
   private line = 1;
-  private procedureStack: string[] = ["main"];
-  private currentLevel = 1;
+  private callStack: string[] = ["main"];
   private currentVariableAddress = -1;
   private shouldAddError = true;
 
@@ -142,15 +141,11 @@ export class Parser {
   }
 
   private parseProcedureBody() {
-    this.currentLevel++;
-
     this.match(TokenType.BEGIN);
     this.parseDeclarations();
     this.parseExecutions();
     this.match(TokenType.END);
-
-    this.currentLevel--;
-    this.procedureStack.shift();
+    this.callStack.shift();
   }
 
   private parseExecutions() {
@@ -341,14 +336,14 @@ export class Parser {
 
     this.variables.push({
       name,
-      procedure: this.procedureStack[0] ?? "",
+      procedure: this.callStack[0] ?? "",
       kind: 0,
       type: "integer",
-      level: this.currentLevel,
+      level: this.callStack.length,
       address: ++this.currentVariableAddress,
     });
 
-    const procedure = this.findProcedure(this.procedureStack[0] ?? "");
+    const procedure = this.findProcedure(this.callStack[0] ?? "");
 
     if (!procedure) {
       return;
@@ -366,7 +361,7 @@ export class Parser {
       (variable) =>
         variable.name === name &&
         variable.kind === 0 &&
-        variable.level === this.currentLevel
+        variable.level === this.callStack.length
     );
   }
 
@@ -375,7 +370,7 @@ export class Parser {
       (variable) =>
         variable.name === name &&
         variable.kind === 0 &&
-        variable.level <= this.currentLevel
+        variable.level <= this.callStack.length
     );
   }
 
@@ -389,10 +384,10 @@ export class Parser {
 
     this.variables.push({
       name,
-      procedure: this.procedureStack[0] ?? "",
+      procedure: this.callStack[0] ?? "",
       kind: 1,
       type: "integer",
-      level: this.currentLevel + 1,
+      level: this.callStack.length,
       address: ++this.currentVariableAddress,
     });
   }
@@ -402,7 +397,7 @@ export class Parser {
       (variable) =>
         variable.name === name &&
         variable.kind === 1 &&
-        variable.level === this.currentLevel + 1
+        variable.level === this.callStack.length
     );
   }
 
@@ -417,25 +412,24 @@ export class Parser {
     this.procedures.push({
       name,
       type: "integer",
-      level: this.currentLevel + 1,
+      level: this.callStack.length + 1,
       firstVariableAddress: -1,
       lastVariableAddress: -1,
     });
-
-    this.procedureStack.unshift(name);
+    this.callStack.unshift(name);
   }
 
   private findDuplicateProcedure(name: string) {
     return this.procedures.find(
       (procedure) =>
-        procedure.name === name && procedure.level === this.currentLevel + 1
+        procedure.name === name && procedure.level === this.callStack.length + 1
     );
   }
 
   private findProcedure(name: string) {
     return this.procedures.find(
       (procedure) =>
-        procedure.name === name && procedure.level <= this.currentLevel + 1
+        procedure.name === name && procedure.level <= this.callStack.length + 1
     );
   }
 
