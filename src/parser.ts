@@ -96,9 +96,8 @@ export class Parser {
       return;
     }
 
-    this.throwError(
-      `'${this.cursor.current.value}' is not a valid variable name`
-    );
+    const { value } = this.consumeToken();
+    this.throwError(`'${value}' is not a valid variable name`);
   }
 
   private parseVariableDeclaration() {
@@ -188,8 +187,9 @@ export class Parser {
       return;
     }
 
+    const { value } = this.consumeToken();
     this.throwError(
-      `Expect executions, but got '${this.cursor.current.value}'. Please move all declarations to the beginning of the procedure`
+      `Expect executions, but got '${value}'. Please move all declarations to the beginning of the procedure`
     );
   }
 
@@ -264,13 +264,13 @@ export class Parser {
         return;
       }
 
-      this.throwError(
-        `Undefined variable or procedure '${this.cursor.current.value}'`
-      );
+      const { value } = this.consumeToken();
+      this.throwError(`Undefined variable or procedure '${value}'`);
     }
 
+    const { value } = this.consumeToken();
     this.throwError(
-      `Expect variable, procedure or constant, but got '${this.cursor.current.value}'`
+      `Expect variable, procedure or constant, but got '${value}'`
     );
   }
 
