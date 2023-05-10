@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "fs";
+import { DYD_PATH, DYS_PATH, ERR_PATH, PRO_PATH, VAR_PATH } from "./config";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
@@ -26,7 +27,7 @@ export class Parser {
   private currentVariableAddress = -1;
   private shouldAddError = true;
 
-  private tokens: Token[] = [];
+  private correctTokens: Token[] = [];
   private variables: Variable[] = [];
   private procedures: Procedure[] = [];
   private errors: string[] = [];
@@ -47,7 +48,7 @@ export class Parser {
       }
       return false;
     } finally {
-      Parser.writeTokens(this.tokens);
+      Parser.writeCorrectTokens(this.correctTokens);
       Parser.writeVariables(this.variables);
       Parser.writeProcedures(this.procedures);
       Parser.writeErrors(this.errors);
@@ -466,7 +467,7 @@ export class Parser {
   private consumeToken() {
     this.goToNextLine();
     const token = this.cursor.consume();
-    this.tokens.push(token);
+    this.correctTokens.push(token);
     this.goToNextLine();
     return token;
   }
@@ -474,7 +475,7 @@ export class Parser {
   private goToNextLine() {
     while (this.cursor.isOpen() && this.hasType(TokenType.END_OF_LINE)) {
       const token = this.cursor.consume();
-      this.tokens.push(token);
+      this.correctTokens.push(token);
       this.line++;
       this.shouldAddError = true;
     }
@@ -525,7 +526,7 @@ export class Parser {
   }
 
   private static readTokens() {
-    const text = readFileSync("output/source.dyd").toString().trim();
+    const text = readFileSync(DYD_PATH).toString().trim();
 
     const tokens: Token[] = [];
 
@@ -542,14 +543,14 @@ export class Parser {
     return tokens;
   }
 
-  private static writeTokens(tokens: Token[]) {
+  private static writeCorrectTokens(tokens: Token[]) {
     const text = tokens
       .map((token) => {
         const { type, value } = token;
         return [value.padStart(16), type.toString().padStart(2, "0")].join(" ");
       })
       .join("\n");
-    writeFileSync("output/source.dys", text);
+    writeFileSync(DYS_PATH, text);
   }
 
   private static writeVariables(variables: Variable[]) {
@@ -566,7 +567,7 @@ export class Parser {
         ].join(" ");
       })
       .join("\n");
-    writeFileSync("output/source.var", text);
+    writeFileSync(VAR_PATH, text);
   }
 
   private static writeProcedures(procedures: Procedure[]) {
@@ -583,11 +584,11 @@ export class Parser {
         ].join(" ");
       })
       .join("\n");
-    writeFileSync("output/source.pro", text);
+    writeFileSync(PRO_PATH, text);
   }
 
   private static writeErrors(errors: string[]) {
     const text = errors.join("\n");
-    writeFileSync("output/source.err", text);
+    writeFileSync(ERR_PATH, text);
   }
 }

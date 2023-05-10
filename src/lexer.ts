@@ -1,4 +1,5 @@
 import { readFileSync, writeFileSync } from "fs";
+import { DYD_PATH, ERR_PATH, SOURCE_PATH } from "./config";
 import { Cursor } from "./cursor";
 import { Token, TokenType } from "./token";
 
@@ -173,7 +174,7 @@ export class Lexer {
   }
 
   private static readSource() {
-    return readFileSync("input/source.pas").toString().trim();
+    return readFileSync(SOURCE_PATH).toString().trim();
   }
 
   private static writeTokens(tokens: Token[]) {
@@ -183,11 +184,11 @@ export class Lexer {
         return [value.padStart(16), type.toString().padStart(2, "0")].join(" ");
       })
       .join("\n");
-    writeFileSync("output/source.dyd", text);
+    writeFileSync(DYD_PATH, text);
   }
 
   private static writeErrors(errors: string[]) {
     const text = errors.join("\n");
-    writeFileSync("output/source.err", text);
+    writeFileSync(ERR_PATH, text);
   }
 }
