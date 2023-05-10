@@ -203,9 +203,9 @@ export class Parser {
   }
 
   private parseAssignment() {
-    if (this.hasVariable()) {
+    if (this.findVariable(this.cursor.current.value)) {
       this.parseVariable();
-    } else if (this.hasProcedure()) {
+    } else if (this.findProcedure(this.cursor.current.value)) {
       this.parseProcedureName();
     } else {
       const { value } = this.consumeToken();
@@ -249,12 +249,12 @@ export class Parser {
     }
 
     if (this.hasType(TokenType.IDENTIFIER)) {
-      if (this.hasVariable()) {
+      if (this.findVariable(this.cursor.current.value)) {
         this.parseVariable();
         return;
       }
 
-      if (this.hasProcedure()) {
+      if (this.findProcedure(this.cursor.current.value)) {
         this.parseProcedureCall();
         return;
       }
@@ -327,6 +327,10 @@ export class Parser {
   }
 
   private registerVariable(name: string) {
+    if (this.findParameter(name)) {
+      return;
+    }
+
     const duplicateVariable = this.findDuplicateVariable(name);
 
     if (duplicateVariable) {
@@ -343,34 +347,20 @@ export class Parser {
       address: ++this.currentVariableAddress,
     });
 
-    const procedure = this.findProcedure(this.callStack[0] ?? "");
-
-    if (!procedure) {
-      return;
-    }
-
-    if (procedure.firstVariableAddress === -1) {
-      procedure.firstVariableAddress = this.currentVariableAddress;
-    }
-
-    procedure.lastVariableAddress = this.currentVariableAddress;
+    this.updateProcedureVariableAddresses();
   }
 
   private findDuplicateVariable(name: string) {
     return this.variables.find(
       (variable) =>
-        variable.name === name &&
-        variable.kind === 0 &&
-        variable.level === this.callStack.length
+        variable.name === name && variable.procedure === this.callStack[0]
     );
   }
 
   private findVariable(name: string) {
     return this.variables.find(
       (variable) =>
-        variable.name === name &&
-        variable.kind === 0 &&
-        variable.level <= this.callStack.length
+        variable.name === name && variable.level <= this.callStack.length
     );
   }
 
@@ -390,6 +380,8 @@ export class Parser {
       level: this.callStack.length,
       address: ++this.currentVariableAddress,
     });
+
+    this.updateProcedureVariableAddresses();
   }
 
   private findDuplicateParameter(name: string) {
@@ -397,7 +389,16 @@ export class Parser {
       (variable) =>
         variable.name === name &&
         variable.kind === 1 &&
-        variable.level === this.callStack.length
+        variable.procedure === this.callStack[0]
+    );
+  }
+
+  private findParameter(name: string) {
+    return this.variables.find(
+      (variable) =>
+        variable.name === name &&
+        variable.kind === 1 &&
+        variable.level <= this.callStack.length
     );
   }
 
@@ -433,12 +434,18 @@ export class Parser {
     );
   }
 
-  private hasVariable() {
-    return this.findVariable(this.cursor.current.value) !== undefined;
-  }
+  private updateProcedureVariableAddresses() {
+    const procedure = this.findProcedure(this.callStack[0] ?? "");
 
-  private hasProcedure() {
-    return this.findProcedure(this.cursor.current.value) !== undefined;
+    if (!procedure) {
+      return;
+    }
+
+    if (procedure.firstVariableAddress === -1) {
+      procedure.firstVariableAddress = this.currentVariableAddress;
+    }
+
+    procedure.lastVariableAddress = this.currentVariableAddress;
   }
 
   private hasType(expectation: TokenType) {
