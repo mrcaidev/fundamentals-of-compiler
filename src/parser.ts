@@ -23,7 +23,7 @@ type Procedure = {
 
 export class Parser {
   private line = 1;
-  private callStack: string[] = ["main"];
+  private callStack: string[] = [];
   private currentVariableAddress = -1;
   private shouldAddError = true;
 
@@ -61,10 +61,14 @@ export class Parser {
   }
 
   private parseSubprogram() {
+    this.callStack.push("main");
+
     this.match(TokenType.BEGIN);
     this.parseDeclarations();
     this.parseExecutions();
     this.match(TokenType.END);
+
+    this.callStack.shift();
   }
 
   private parseDeclarations() {
@@ -82,7 +86,7 @@ export class Parser {
   private parseDeclaration() {
     this.match(
       TokenType.INTEGER,
-      `Expect declaration, but got '${this.cursor.current.value}'`
+      "Every program or procedure should have at least one declaration"
     );
     this.parseDeclaration_();
     this.match(TokenType.SEMICOLON);
@@ -149,6 +153,7 @@ export class Parser {
     this.parseDeclarations();
     this.parseExecutions();
     this.match(TokenType.END);
+
     this.callStack.shift();
   }
 
@@ -186,10 +191,16 @@ export class Parser {
       return;
     }
 
+    if (this.hasType(TokenType.INTEGER)) {
+      this.consumeToken();
+      this.throwError(
+        "Please move all declarations to the beginning of the procedure"
+      );
+      return;
+    }
+
     const { value } = this.consumeToken();
-    this.throwError(
-      `Expect executions, but got '${value}'. Please move all declarations to the beginning of the procedure`
-    );
+    this.throwError(`Execution cannot begin with '${value}'`);
   }
 
   private parseRead() {
