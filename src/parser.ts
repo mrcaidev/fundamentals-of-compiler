@@ -79,7 +79,10 @@ export class Parser {
   }
 
   private parseDeclaration() {
-    this.match(TokenType.INTEGER);
+    this.match(
+      TokenType.INTEGER,
+      `Expect declaration, but got '${this.cursor.current.value}'`
+    );
     this.parseDeclaration_();
     this.match(TokenType.SEMICOLON);
   }
