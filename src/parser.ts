@@ -10,6 +10,7 @@ type Variable = {
   type: string;
   level: number;
   address: number;
+  isDeclared: boolean;
 };
 
 type Procedure = {
@@ -330,7 +331,9 @@ export class Parser {
   }
 
   private registerVariable(name: string) {
-    if (this.findParameter(name)) {
+    const parameter = this.findParameter(name);
+    if (parameter) {
+      parameter.isDeclared = true;
       return;
     }
 
@@ -348,6 +351,7 @@ export class Parser {
       type: "integer",
       level: this.callStack.length,
       address: ++this.currentVariableAddress,
+      isDeclared: true,
     });
 
     this.updateProcedureVariableAddresses();
@@ -361,10 +365,21 @@ export class Parser {
   }
 
   private findVariable(name: string) {
-    return this.variables.find(
+    const variable = this.variables.find(
       (variable) =>
         variable.name === name && variable.level <= this.callStack.length
     );
+
+    if (!variable) {
+      return undefined;
+    }
+
+    if (variable.isDeclared) {
+      return variable;
+    }
+
+    this.addError(`Variable '${name}' has not been declared`);
+    return variable;
   }
 
   private registerParameter(name: string) {
@@ -382,6 +397,7 @@ export class Parser {
       type: "integer",
       level: this.callStack.length,
       address: ++this.currentVariableAddress,
+      isDeclared: false,
     });
 
     this.updateProcedureVariableAddresses();
